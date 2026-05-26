@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>runy</title>
+  <style>
+    :root {
+      --bg: #111318;
+      --panel: #1b1f27;
+      --panel-2: #232938;
+      --text: #eef2ff;
+      --muted: #9aa4bd;
+      --good: #3ddc97;
+      --bad: #ff6b6b;
+      --accent: #7c9cff;
+      --border: #343c52;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(180deg, #0d0f14, #161a22);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(900px, 100%);
+      background: rgba(27,31,39,0.95);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .desc {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .panel {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+
+    .status {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      min-height: 24px;
+    }
+
+    .progress {
+      font-size: 14px;
+      margin-bottom: 18px;
+      color: #cbd5e1;
+    }
+
+    .runes {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .rune {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 14px;
+      min-height: 92px;
+      display: grid;
+      place-items: center;
+      font-size: 34px;
+      cursor: pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      user-select: none;
+    }
+
+    .rune:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      background: #202634;
+    }
+
+    .rune.locked {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    .rune.correct {
+      background: rgba(61,220,151,0.12);
+      border-color: var(--good);
+      color: var(--good);
+    }
+
+    .rune.wrong {
+      background: rgba(255,107,107,0.12);
+      border-color: var(--bad);
+      color: var(--bad);
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: #202634;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .success {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(61,220,151,0.10);
+      border: 1px solid var(--good);
+      color: #d7ffe9;
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .runes {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .rune {
+        min-height: 78px;
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Panel run</h1>
+    <p class="desc">
+      kliknij <strong>pierwsze cztery runy</strong>.
+    </p>
+
+    <section class="panel">
+      <div id="status" class="status">czekam na pierwszy wybór.</div>
+      <div id="progress" class="progress">postęp: 0 / 4</div>
+
+      <div id="runes" class="runes"></div>
+
+      <div class="controls">
+        <button id="resetBtn" type="button">Reset</button>
+      </div>
+
+      <div id="successBox" class="success">
+        juhu, link do yt;
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const runeSymbols = [
+      "ᚠ","ᚢ","ᚦ","ᚨ",
+      "ᚱ","ᚲ","ᚷ","ᚹ",
+      "ᚺ","ᚾ","ᛁ","ᛃ"
+    ];
+
+    const correctSequence = [0, 1, 2, 3];
+    let currentStep = 0;
+    let solved = false;
+
+    const runesEl = document.getElementById("runes");
+    const statusEl = document.getElementById("status");
+    const progressEl = document.getElementById("progress");
+    const successBox = document.getElementById("successBox");
+    const resetBtn = document.getElementById("resetBtn");
+
+    function renderRunes() {
+      runesEl.innerHTML = "";
+
+      runeSymbols.forEach((symbol, index) => {
+        const btn = document.createElement("button");
+        btn.className = "rune";
+        btn.type = "button";
+        btn.textContent = symbol;
+        btn.dataset.index = index;
+        btn.setAttribute("aria-label", `Runa ${index + 1}`);
+
+        btn.addEventListener("click", () => handleRuneClick(index, btn));
+        runesEl.appendChild(btn);
+      });
+    }
+
+    function handleRuneClick(index, btn) {
+      if (solved) return;
+
+      const expected = correctSequence[currentStep];
+
+      if (index === expected) {
+        btn.classList.remove("wrong");
+        btn.classList.add("correct", "locked");
+        btn.disabled = true;
+
+        currentStep += 1;
+        updateProgress();
+
+        if (currentStep === correctSequence.length) {
+          solved = true;
+          statusEl.textContent = "Wszystkie poprawne runy zostały aktywowane.";
+          successBox.style.display = "block";
+          lockAllRunes();
+        } else {
+          statusEl.textContent = `Dobrze. Teraz wybierz runę numer ${currentStep + 1} w sekwencji.`;
+        }
+      } else {
+        flashWrong(btn);
+        statusEl.textContent = "Błędna runa — sekwencja została zresetowana.";
+        resetSequence();
+      }
+    }
+
+    function flashWrong(btn) {
+      btn.classList.add("wrong");
+      setTimeout(() => btn.classList.remove("wrong"), 450);
+    }
+
+    function resetSequence() {
+      currentStep = 0;
+      solved = false;
+      successBox.style.display = "none";
+
+      document.querySelectorAll(".rune").forEach((el) => {
+        el.classList.remove("correct", "locked", "wrong");
+        el.disabled = false;
+      });
+
+      updateProgress();
+    }
+
+    function lockAllRunes() {
+      document.querySelectorAll(".rune").forEach((el) => {
+        el.disabled = true;
+        el.classList.add("locked");
+      });
+    }
+
+    function updateProgress() {
+      progressEl.textContent = `Postęp: ${currentStep} / ${correctSequence.length}`;
+    }
+
+    resetBtn.addEventListener("click", () => {
+      statusEl.textContent = "Czekam na pierwszy wybór.";
+      resetSequence();
+    });
+
+    renderRunes();
+    updateProgress();
+  </script>
+</body>
+</html>
