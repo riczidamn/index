@@ -3,278 +3,698 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>runy</title>
+  <title>rune-puzzle-two-player</title>
   <style>
     :root {
-      --bg: #111318;
-      --panel: #1b1f27;
-      --panel-2: #232938;
+      --bg: #0f1117;
+      --surface: #181c24;
+      --surface-2: #202633;
+      --surface-3: #252d3d;
+      --border: #384156;
       --text: #eef2ff;
-      --muted: #9aa4bd;
-      --good: #3ddc97;
-      --bad: #ff6b6b;
-      --accent: #7c9cff;
-      --border: #343c52;
+      --muted: #a6b0c8;
+      --accent: #7aa2ff;
+      --good: #44d19b;
+      --bad: #ff7272;
+      --warn: #f2c14e;
+      --radius: 14px;
+      --shadow: 0 20px 50px rgba(0,0,0,.35);
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: system-ui, sans-serif;
-      background: linear-gradient(180deg, #0d0f14, #161a22);
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(180deg, #0b0d12 0%, #121722 100%);
       color: var(--text);
       min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
     }
 
-    .app {
-      width: min(900px, 100%);
-      background: rgba(27,31,39,0.95);
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto 40px;
+    }
+
+    .hero {
+      background: rgba(24,28,36,.92);
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: 22px;
       padding: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
     }
 
     h1 {
       margin: 0 0 8px;
-      font-size: 28px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.05;
     }
 
-    .desc {
-      margin: 0 0 20px;
+    .lead {
+      margin: 0;
+      max-width: 72ch;
       color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(24,28,36,.95);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
       line-height: 1.5;
     }
 
-    .panel {
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 18px;
+    .inline {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
     }
+
+    .role-buttons, .action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font: inherit;
+      transition: .15s ease;
+      min-height: 42px;
+    }
+
+    button:hover { border-color: var(--accent); transform: translateY(-1px); }
+    button.primary { background: #22304f; border-color: #4966b0; }
+    button.good { background: #17382f; border-color: #2d8b66; }
+    button.warn { background: #3a3118; border-color: #9e8431; }
+    button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    textarea, input {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    .stack { display: grid; gap: 12px; }
 
     .status {
-      font-size: 15px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
       color: var(--muted);
-      margin-bottom: 8px;
-      min-height: 24px;
+      line-height: 1.45;
     }
 
-    .progress {
-      font-size: 14px;
-      margin-bottom: 18px;
-      color: #cbd5e1;
+    .status.good { border-color: #2d8b66; color: #d9fff0; background: rgba(68,209,155,.10); }
+    .status.bad { border-color: #b45252; color: #ffe0e0; background: rgba(255,114,114,.10); }
+    .status.warn { border-color: #9e8431; color: #fff3cf; background: rgba(242,193,78,.10); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
     }
 
-    .runes {
+    .main-panel { display: grid; gap: 18px; }
+
+    .hidden { display: none !important; }
+
+    .rune-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
 
     .rune {
-      border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--text);
-      border-radius: 14px;
-      min-height: 92px;
       display: grid;
       place-items: center;
+      min-height: 92px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
       font-size: 34px;
-      cursor: pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
       user-select: none;
     }
 
-    .rune:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent);
-      background: #202634;
-    }
-
-    .rune.locked {
-      opacity: 0.55;
-      cursor: default;
-    }
-
-    .rune.correct {
-      background: rgba(61,220,151,0.12);
-      border-color: var(--good);
-      color: var(--good);
-    }
-
-    .rune.wrong {
-      background: rgba(255,107,107,0.12);
-      border-color: var(--bad);
-      color: var(--bad);
-    }
-
-    .controls {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 18px;
-    }
-
-    button {
-      border: 1px solid var(--border);
-      background: #202634;
+    button.rune {
+      width: 100%;
       color: var(--text);
-      padding: 10px 14px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 14px;
     }
 
-    button:hover {
-      border-color: var(--accent);
+    button.rune:hover { background: #273046; }
+    .rune.ref { background: #1f283b; border-style: dashed; }
+    .rune.correct { background: rgba(68,209,155,.12); border-color: var(--good); color: var(--good); }
+    .rune.wrong { background: rgba(255,114,114,.12); border-color: var(--bad); color: var(--bad); }
+    .rune.locked { opacity: .55; }
+
+    .two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
     }
 
-    .success {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 12px;
-      background: rgba(61,220,151,0.10);
-      border: 1px solid var(--good);
-      color: #d7ffe9;
-      display: none;
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      color: #d7e3ff;
+    }
+
+    .footer-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .grid, .two-cols { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 640px) {
-      .runes {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-      .rune {
-        min-height: 78px;
-        font-size: 28px;
-      }
+      .container { width: min(100% - 20px, 100%); margin-top: 12px; }
+      .hero, .card { padding: 14px; border-radius: 16px; }
+      .rune-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .rune { min-height: 78px; font-size: 28px; }
     }
   </style>
 </head>
 <body>
-  <main class="app">
-    <h1>Panel run</h1>
-    <p class="desc">
-      kliknij <strong>pierwsze cztery runy</strong>.
-    </p>
-
-    <section class="panel">
-      <div id="status" class="status">czekam na pierwszy wybór.</div>
-      <div id="progress" class="progress">postęp: 0 / 4</div>
-
-      <div id="runes" class="runes"></div>
-
-      <div class="controls">
-        <button id="resetBtn" type="button">Reset</button>
-      </div>
-
-      <div id="successBox" class="success">
-        juhu, link do yt;
-      </div>
+  <div class="container">
+    <section class="hero">
+      <h1>Zagadka run dla 2 osób</h1>
+      <p class="lead">Jedna osoba widzi cztery poprawne runy, druga widzi pełny panel z dwunastoma runami i musi klikać we właściwe symbole w odpowiedniej kolejności. Połączenie działa peer-to-peer przez WebRTC DataChannel; do zestawienia połączenia użyte jest ręczne kopiowanie offer/answer, co pozwala uruchomić całość jako statyczny plik HTML na GitHub Pages. <span style="display:none">[web:46][web:48][web:50][web:64][web:66]</span></p>
     </section>
-  </main>
+
+    <div class="grid">
+      <aside class="card stack">
+        <div>
+          <h2>1. Rola</h2>
+          <p class="small">Wybierz, kim jesteś w tej sesji. Obie osoby otwierają ten sam plik HTML.</p>
+          <div class="role-buttons">
+            <button id="roleA" class="primary" type="button">Jestem A — widzę 4 runy</button>
+            <button id="roleB" type="button">Jestem B — klikam 12 run</button>
+          </div>
+        </div>
+
+        <div>
+          <h2>2. Połączenie</h2>
+          <p class="small">A tworzy offer i wysyła ją do B. B wkleja offer, tworzy answer i odsyła ją do A. Po otwarciu kanału dane o kliknięciach i stanie gry lecą bezpośrednio między przeglądarkami.</p>
+          <div class="action-buttons">
+            <button id="createOfferBtn" class="good" type="button">A: utwórz offer</button>
+            <button id="createAnswerBtn" class="good" type="button">B: wklej offer i utwórz answer</button>
+            <button id="applyAnswerBtn" class="warn" type="button">A: wklej answer</button>
+          </div>
+        </div>
+
+        <div class="stack">
+          <label class="small" for="signalIn">Pole do wklejania sygnału</label>
+          <textarea id="signalIn" placeholder="Wklej tu offer albo answer..."></textarea>
+          <label class="small" for="signalOut">Wygenerowany sygnał</label>
+          <textarea id="signalOut" readonly placeholder="Tutaj pojawi się offer lub answer."></textarea>
+          <div class="action-buttons">
+            <button id="copySignalBtn" type="button">Kopiuj wygenerowany tekst</button>
+            <button id="clearSignalBtn" type="button">Wyczyść pola</button>
+          </div>
+        </div>
+
+        <div id="connStatus" class="status warn">Brak połączenia. Najpierw wybierz rolę.</div>
+        <div class="inline">
+          <span class="pill">Kanał: <strong id="channelState">zamknięty</strong></span>
+          <span class="pill">Rola: <strong id="currentRole">brak</strong></span>
+        </div>
+        <p class="footer-note">W tej wersji STUN używa publicznego serwera Google, a wymiana SDP jest ręczna. To podejście jest zgodne z tym, jak działają przykłady ręcznego signalingu dla WebRTC DataChannel. <span style="display:none">[web:46][web:48][web:50][web:56]</span></p>
+      </aside>
+
+      <main class="main-panel">
+        <section id="panelA" class="card hidden">
+          <h2>Panel A — karta referencyjna</h2>
+          <p class="small">Ty widzisz tylko poprawne runy. Opisz je drugiej osobie we właściwej kolejności.</p>
+          <div id="referenceRunes" class="rune-grid"></div>
+          <div id="aInfo" class="status">Czekam na połączenie z graczem B.</div>
+        </section>
+
+        <section id="panelB" class="card hidden">
+          <h2>Panel B — panel aktywacji</h2>
+          <p class="small">Ty widzisz wszystkie runy. Musisz kliknąć poprawną sekwencję czterech symboli.</p>
+          <div class="two-cols">
+            <div>
+              <div id="runeBoard" class="rune-grid"></div>
+            </div>
+            <div class="stack">
+              <div id="gameStatus" class="status">Czekam na połączenie z graczem A.</div>
+              <div class="pill">Postęp: <strong id="progress">0 / 4</strong></div>
+              <div class="action-buttons">
+                <button id="resetGameBtn" type="button">Reset gry</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Instrukcja</h2>
+          <div class="stack small">
+            <div>1. Obie osoby otwierają tę samą stronę.</div>
+            <div>2. Jedna wybiera rolę A, druga rolę B.</div>
+            <div>3. A klika „utwórz offer”, kopiuje tekst i wysyła go do B.</div>
+            <div>4. B wkleja offer, klika „utwórz answer”, kopiuje odpowiedź i wysyła ją do A.</div>
+            <div>5. A wkleja answer i klika „wklej answer”.</div>
+            <div>6. Gdy kanał się otworzy, A opisuje 4 runy, a B klika właściwe symbole.</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
 
   <script>
-    const runeSymbols = [
-      "ᚠ","ᚢ","ᚦ","ᚨ",
-      "ᚱ","ᚲ","ᚷ","ᚹ",
-      "ᚺ","ᚾ","ᛁ","ᛃ"
-    ];
+    const RUNES = ["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᚹ","ᚺ","ᚾ","ᛁ","ᛃ"];
+    const CORRECT_SEQUENCE = [0, 1, 2, 3];
+    const STUN_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    const correctSequence = [0, 1, 2, 3];
-    let currentStep = 0;
-    let solved = false;
+    let role = null;
+    let pc = null;
+    let dc = null;
+    let makingOffer = false;
+    let waitForIceResolve = null;
+    let remoteDescriptionSet = false;
+    let gameStep = 0;
+    let gameSolved = false;
 
-    const runesEl = document.getElementById("runes");
-    const statusEl = document.getElementById("status");
-    const progressEl = document.getElementById("progress");
-    const successBox = document.getElementById("successBox");
-    const resetBtn = document.getElementById("resetBtn");
+    const roleAButton = document.getElementById('roleA');
+    const roleBButton = document.getElementById('roleB');
+    const createOfferBtn = document.getElementById('createOfferBtn');
+    const createAnswerBtn = document.getElementById('createAnswerBtn');
+    const applyAnswerBtn = document.getElementById('applyAnswerBtn');
+    const copySignalBtn = document.getElementById('copySignalBtn');
+    const clearSignalBtn = document.getElementById('clearSignalBtn');
+    const resetGameBtn = document.getElementById('resetGameBtn');
+    const signalIn = document.getElementById('signalIn');
+    const signalOut = document.getElementById('signalOut');
+    const connStatus = document.getElementById('connStatus');
+    const channelState = document.getElementById('channelState');
+    const currentRole = document.getElementById('currentRole');
+    const panelA = document.getElementById('panelA');
+    const panelB = document.getElementById('panelB');
+    const referenceRunes = document.getElementById('referenceRunes');
+    const runeBoard = document.getElementById('runeBoard');
+    const aInfo = document.getElementById('aInfo');
+    const gameStatus = document.getElementById('gameStatus');
+    const progress = document.getElementById('progress');
 
-    function renderRunes() {
-      runesEl.innerHTML = "";
+    function setRole(nextRole) {
+      role = nextRole;
+      currentRole.textContent = role;
+      roleAButton.classList.toggle('primary', role === 'A');
+      roleBButton.classList.toggle('primary', role === 'B');
+      panelA.classList.toggle('hidden', role !== 'A');
+      panelB.classList.toggle('hidden', role !== 'B');
+      updateConnectionStatus('Rola wybrana. Teraz przygotuj połączenie.', 'warn');
+      resetPeerState();
+      renderRolePanels();
+    }
 
-      runeSymbols.forEach((symbol, index) => {
-        const btn = document.createElement("button");
-        btn.className = "rune";
-        btn.type = "button";
+    function renderRolePanels() {
+      if (role === 'A') renderReferenceRunes();
+      if (role === 'B') renderRuneBoard();
+    }
+
+    function renderReferenceRunes() {
+      referenceRunes.innerHTML = '';
+      CORRECT_SEQUENCE.forEach(index => {
+        const el = document.createElement('div');
+        el.className = 'rune ref';
+        el.textContent = RUNES[index];
+        referenceRunes.appendChild(el);
+      });
+    }
+
+    function renderRuneBoard() {
+      runeBoard.innerHTML = '';
+      RUNES.forEach((symbol, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rune';
         btn.textContent = symbol;
         btn.dataset.index = index;
-        btn.setAttribute("aria-label", `Runa ${index + 1}`);
-
-        btn.addEventListener("click", () => handleRuneClick(index, btn));
-        runesEl.appendChild(btn);
+        btn.setAttribute('aria-label', `Runa ${index + 1}`);
+        btn.addEventListener('click', () => handleRuneClick(index, btn));
+        runeBoard.appendChild(btn);
       });
-    }
-
-    function handleRuneClick(index, btn) {
-      if (solved) return;
-
-      const expected = correctSequence[currentStep];
-
-      if (index === expected) {
-        btn.classList.remove("wrong");
-        btn.classList.add("correct", "locked");
-        btn.disabled = true;
-
-        currentStep += 1;
-        updateProgress();
-
-        if (currentStep === correctSequence.length) {
-          solved = true;
-          statusEl.textContent = "Wszystkie poprawne runy zostały aktywowane.";
-          successBox.style.display = "block";
-          lockAllRunes();
-        } else {
-          statusEl.textContent = `Dobrze. Teraz wybierz runę numer ${currentStep + 1} w sekwencji.`;
-        }
-      } else {
-        flashWrong(btn);
-        statusEl.textContent = "Błędna runa — sekwencja została zresetowana.";
-        resetSequence();
-      }
-    }
-
-    function flashWrong(btn) {
-      btn.classList.add("wrong");
-      setTimeout(() => btn.classList.remove("wrong"), 450);
-    }
-
-    function resetSequence() {
-      currentStep = 0;
-      solved = false;
-      successBox.style.display = "none";
-
-      document.querySelectorAll(".rune").forEach((el) => {
-        el.classList.remove("correct", "locked", "wrong");
-        el.disabled = false;
-      });
-
       updateProgress();
     }
 
-    function lockAllRunes() {
-      document.querySelectorAll(".rune").forEach((el) => {
-        el.disabled = true;
-        el.classList.add("locked");
+    function resetPeerState() {
+      if (dc) {
+        try { dc.close(); } catch {}
+      }
+      if (pc) {
+        try { pc.close(); } catch {}
+      }
+      pc = null;
+      dc = null;
+      remoteDescriptionSet = false;
+      makingOffer = false;
+      channelState.textContent = 'zamknięty';
+      if (role === 'A') aInfo.textContent = 'Czekam na połączenie z graczem B.';
+      if (role === 'B') gameStatus.textContent = 'Czekam na połączenie z graczem A.';
+    }
+
+    function ensurePeerConnection() {
+      if (pc) return;
+      pc = new RTCPeerConnection(STUN_CONFIG);
+
+      pc.onicecandidate = (event) => {
+        if (!event.candidate && waitForIceResolve) {
+          waitForIceResolve();
+          waitForIceResolve = null;
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        const state = pc.connectionState || 'nowy';
+        if (state === 'connected') updateConnectionStatus('Połączenie zestawione. Można grać.', 'good');
+        else if (state === 'connecting') updateConnectionStatus('Łączenie z drugim graczem…', 'warn');
+        else if (state === 'failed' || state === 'disconnected' || state === 'closed') updateConnectionStatus(`Stan połączenia: ${state}.`, 'bad');
+      };
+
+      pc.ondatachannel = (event) => {
+        dc = event.channel;
+        bindDataChannel();
+      };
+    }
+
+    function createDataChannelIfNeeded() {
+      if (!pc) ensurePeerConnection();
+      if (!dc) {
+        dc = pc.createDataChannel('runes');
+        bindDataChannel();
+      }
+    }
+
+    function bindDataChannel() {
+      if (!dc) return;
+      dc.onopen = () => {
+        channelState.textContent = 'otwarty';
+        updateConnectionStatus('Kanał danych otwarty. Możecie zaczynać.', 'good');
+        sendMessage({ type: 'hello', role });
+        syncFullState();
+      };
+      dc.onclose = () => {
+        channelState.textContent = 'zamknięty';
+        updateConnectionStatus('Kanał danych został zamknięty.', 'bad');
+      };
+      dc.onerror = () => {
+        updateConnectionStatus('Błąd kanału danych.', 'bad');
+      };
+      dc.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          handleMessage(message);
+        } catch {
+          console.warn('Nie udało się odczytać wiadomości.');
+        }
+      };
+    }
+
+    function waitForIceGatheringComplete() {
+      return new Promise(resolve => {
+        if (!pc) return resolve();
+        if (pc.iceGatheringState === 'complete') return resolve();
+        waitForIceResolve = resolve;
+        setTimeout(() => {
+          if (waitForIceResolve) {
+            waitForIceResolve();
+            waitForIceResolve = null;
+          }
+        }, 2500);
       });
     }
 
-    function updateProgress() {
-      progressEl.textContent = `Postęp: ${currentStep} / ${correctSequence.length}`;
+    async function createOffer() {
+      if (role !== 'A') {
+        updateConnectionStatus('Offer może utworzyć tylko gracz A.', 'bad');
+        return;
+      }
+      ensurePeerConnection();
+      createDataChannelIfNeeded();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await waitForIceGatheringComplete();
+      signalOut.value = JSON.stringify(pc.localDescription);
+      updateConnectionStatus('Offer gotowa. Wyślij ją graczowi B.', 'good');
     }
 
-    resetBtn.addEventListener("click", () => {
-      statusEl.textContent = "Czekam na pierwszy wybór.";
-      resetSequence();
-    });
+    async function createAnswer() {
+      if (role !== 'B') {
+        updateConnectionStatus('Answer może utworzyć tylko gracz B.', 'bad');
+        return;
+      }
+      if (!signalIn.value.trim()) {
+        updateConnectionStatus('Najpierw wklej offer od gracza A.', 'bad');
+        return;
+      }
+      ensurePeerConnection();
+      let offer;
+      try {
+        offer = JSON.parse(signalIn.value.trim());
+      } catch {
+        updateConnectionStatus('Nieprawidłowy JSON offer.', 'bad');
+        return;
+      }
+      await pc.setRemoteDescription(offer);
+      remoteDescriptionSet = true;
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitForIceGatheringComplete();
+      signalOut.value = JSON.stringify(pc.localDescription);
+      updateConnectionStatus('Answer gotowa. Odeślij ją graczowi A.', 'good');
+    }
 
-    renderRunes();
-    updateProgress();
+    async function applyAnswer() {
+      if (role !== 'A') {
+        updateConnectionStatus('Answer może wkleić tylko gracz A.', 'bad');
+        return;
+      }
+      if (!signalIn.value.trim()) {
+        updateConnectionStatus('Najpierw wklej answer od gracza B.', 'bad');
+        return;
+      }
+      ensurePeerConnection();
+      let answer;
+      try {
+        answer = JSON.parse(signalIn.value.trim());
+      } catch {
+        updateConnectionStatus('Nieprawidłowy JSON answer.', 'bad');
+        return;
+      }
+      await pc.setRemoteDescription(answer);
+      remoteDescriptionSet = true;
+      updateConnectionStatus('Answer przyjęta. Czekam na otwarcie kanału.', 'warn');
+    }
+
+    function updateConnectionStatus(text, type = '') {
+      connStatus.className = `status ${type}`.trim();
+      connStatus.textContent = text;
+    }
+
+    function sendMessage(payload) {
+      if (!dc || dc.readyState !== 'open') return;
+      dc.send(JSON.stringify(payload));
+    }
+
+    function syncFullState() {
+      sendMessage({
+        type: 'state-sync',
+        gameStep,
+        gameSolved,
+        role
+      });
+    }
+
+    function handleMessage(message) {
+      if (message.type === 'hello') {
+        if (role === 'A') aInfo.textContent = 'Gracz B jest połączony. Opisz cztery runy w odpowiedniej kolejności.';
+        if (role === 'B') gameStatus.textContent = 'Gracz A jest połączony. Czekam na opis run.';
+        syncFullState();
+        return;
+      }
+
+      if (message.type === 'state-sync') {
+        gameStep = message.gameStep ?? 0;
+        gameSolved = !!message.gameSolved;
+        applyBoardState();
+        return;
+      }
+
+      if (message.type === 'b-click') {
+        if (role === 'A') {
+          aInfo.textContent = `Gracz B kliknął runę ${RUNES[message.index]}.`;
+        }
+        return;
+      }
+
+      if (message.type === 'b-reset') {
+        resetGameLocal(false);
+        if (role === 'A') aInfo.textContent = 'Gracz B zresetował planszę.';
+        return;
+      }
+
+      if (message.type === 'b-progress') {
+        gameStep = message.gameStep;
+        gameSolved = !!message.gameSolved;
+        if (role === 'A') {
+          if (gameSolved) aInfo.textContent = 'Gracz B rozwiązał zagadkę.';
+          else aInfo.textContent = `Postęp gracza B: ${gameStep} / 4.`;
+        }
+        return;
+      }
+    }
+
+    function handleRuneClick(index, button) {
+      if (role !== 'B') return;
+      if (!dc || dc.readyState !== 'open') {
+        gameStatus.className = 'status bad';
+        gameStatus.textContent = 'Najpierw połącz się z graczem A.';
+        return;
+      }
+      if (gameSolved) return;
+
+      sendMessage({ type: 'b-click', index });
+
+      const expected = CORRECT_SEQUENCE[gameStep];
+      if (index === expected) {
+        button.classList.remove('wrong');
+        button.classList.add('correct', 'locked');
+        button.disabled = true;
+        gameStep += 1;
+        if (gameStep >= CORRECT_SEQUENCE.length) {
+          gameSolved = true;
+          gameStatus.className = 'status good';
+          gameStatus.textContent = 'Sukces. Poprawna sekwencja została aktywowana.';
+          lockBoard();
+        } else {
+          gameStatus.className = 'status good';
+          gameStatus.textContent = `Dobrze. Postęp: ${gameStep} / 4.`;
+        }
+      } else {
+        button.classList.add('wrong');
+        setTimeout(() => button.classList.remove('wrong'), 450);
+        gameStatus.className = 'status bad';
+        gameStatus.textContent = 'Błędna runa. Sekwencja została zresetowana.';
+        resetGameLocal(false);
+      }
+
+      updateProgress();
+      sendMessage({ type: 'b-progress', gameStep, gameSolved });
+    }
+
+    function resetGameLocal(announce = true) {
+      gameStep = 0;
+      gameSolved = false;
+      document.querySelectorAll('#runeBoard .rune').forEach(el => {
+        el.classList.remove('correct', 'wrong', 'locked');
+        el.disabled = false;
+      });
+      if (role === 'B') {
+        gameStatus.className = 'status';
+        gameStatus.textContent = 'Plansza zresetowana. Czekam na kolejną próbę.';
+      }
+      updateProgress();
+      if (announce) {
+        sendMessage({ type: 'b-reset' });
+        sendMessage({ type: 'b-progress', gameStep, gameSolved });
+      }
+    }
+
+    function lockBoard() {
+      document.querySelectorAll('#runeBoard .rune').forEach(el => {
+        el.disabled = true;
+        el.classList.add('locked');
+      });
+    }
+
+    function applyBoardState() {
+      if (role !== 'B') return;
+      document.querySelectorAll('#runeBoard .rune').forEach((el, index) => {
+        const shouldBeCorrect = CORRECT_SEQUENCE.slice(0, gameStep).includes(index);
+        el.classList.toggle('correct', shouldBeCorrect);
+        el.classList.toggle('locked', shouldBeCorrect || gameSolved);
+        el.disabled = shouldBeCorrect || gameSolved;
+      });
+      if (gameSolved) {
+        gameStatus.className = 'status good';
+        gameStatus.textContent = 'Sukces. Poprawna sekwencja została aktywowana.';
+        lockBoard();
+      }
+      updateProgress();
+    }
+
+    function updateProgress() {
+      progress.textContent = `${gameStep} / 4`;
+    }
+
+    roleAButton.addEventListener('click', () => setRole('A'));
+    roleBButton.addEventListener('click', () => setRole('B'));
+    createOfferBtn.addEventListener('click', () => createOffer().catch(err => updateConnectionStatus(`Błąd offer: ${err.message}`, 'bad')));
+    createAnswerBtn.addEventListener('click', () => createAnswer().catch(err => updateConnectionStatus(`Błąd answer: ${err.message}`, 'bad')));
+    applyAnswerBtn.addEventListener('click', () => applyAnswer().catch(err => updateConnectionStatus(`Błąd ustawienia answer: ${err.message}`, 'bad')));
+    copySignalBtn.addEventListener('click', async () => {
+      const text = signalOut.value.trim();
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        updateConnectionStatus('Skopiowano wygenerowany sygnał.', 'good');
+      } catch {
+        updateConnectionStatus('Nie udało się skopiować automatycznie. Skopiuj ręcznie.', 'warn');
+      }
+    });
+    clearSignalBtn.addEventListener('click', () => {
+      signalIn.value = '';
+      signalOut.value = '';
+    });
+    resetGameBtn.addEventListener('click', () => resetGameLocal(true));
+
+    renderRolePanels();
   </script>
 </body>
 </html>
